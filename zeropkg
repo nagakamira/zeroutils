@@ -252,7 +252,7 @@ unset demo info root paquets
 MASTER=""
 ROOT="$(echo "$ROOT" | sed 's#/*$#/#')"
 LOGDIR="${ROOT}var/log/packages"
-CURL="/usr/bin/curl-statique -#LRs" # Curl is compiled statically
+CURL="/usr/bin/curl -#LRs" # Curl is compiled statically
 
 for i in $(getopt ACEGJLST "$@"); do
     case "$root$i" in
