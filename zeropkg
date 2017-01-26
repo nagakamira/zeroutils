@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # zeropkg - package manager for ZeroLinux
+# Spack need for zeropkg
 
 # Copyright (c) 2012-2015 Sébastien Boillod <sbb at tuxfamily dot org>.
 # Copyright (c) 2017 Egor Mikhailov <nagakamira at mail dot ru>.
