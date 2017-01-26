@@ -1,0 +1,297 @@
+#!/bin/sh
+#
+# 0G - gestionnaire distant pour 0linux.
+
+# Copyright (c) 2012-2015 Sébastien Boillod <sbb at tuxfamily dot org>.
+# Copyright (c) 2017 Egor Mikhailov <nagakamira at mail dot ru>.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+# AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+# OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+# PERFORMANCE OF THIS SOFTWARE.
+
+# === Configuration ============================================================
+# The information about the system and the configuration of zeropkg are loaded
+# as a shell script. This is done here so that the latter may not redefine
+# the body of the script; they should not contain any error.
+set -e
+CONFIG="/etc/os-release"
+if [ -f "$CONFIG" ]; then
+    . "$CONFIG"
+fi
+
+unset Attention Cache Expert Journal Local Sauvegarde Source Tampon
+CONFIG="/etc/0outils/0g.conf"
+if [ -f "$CONFIG" ]; then
+    . "$CONFIG"
+fi
+set +e
+
+# === Library =============================================================
+evalpkg () {
+    # List the packages that need to be updated
+    # $f EXPERT MODE, PACKAGES
+    local exp="#" pkg="REQ"
+    [ "$1" = "yes" ] || exp=""; shift 1
+    [ $# -gt 0 ] || pkg="GET"
+    awk 'function update (p, c,v,i) {
+           if (p in SKIP)
+             return
+           c = split(DB[p], v)
+           delete DB[p]; SKIP[p]
+           if (v[2] != GET[p]) {
+  '$exp'     for (i=5; i<=c; i++)
+  '$exp'       (v[i] in DB) && update(v[i])
+             print ((p in SPECIAL) ? 1 : 0), v[4], v[3] v[2]
+           }
+         }
+         BEGIN { for (i=1;i<ARGC;i++) REQ[ARGV[i]]; ARGC=split("",ARGV)
+                 getline; for (i=1; i <= NF; i++) SKIP[$i]
+                 getline; for (i=1; i <= NF; i++) SPECIAL[$i]
+                 while ((getline p) > 0) {
+                    if (p == "--end--") break
+                    n = p; sub(/-[^-]+-[^-]+-[^-]+$/,"",n); GET[n] = p
+                 }
+               }
+         ($1 in SKIP) {delete GET[$1]; next}
+         {DB[$1] = $0}
+         END { for (p in '$pkg') 
+                 if (p in DB)
+                   update(p)
+                 else if ((p in REQ) && !(p in SKIP))
+                   print "(!) "p": package not found !">"/dev/stderr"
+             }' $@
+}
+
+getopt () {
+    # Separates options from arguments on the command line.
+    # $f OPTIONS WITH ARGUMENT
+    local opt=$1; shift 1
+    awk 'BEGIN{ for (i=x=1; i < ARGC; i++) {
+                    s = ARGV[i]
+                    if (X || ! (sub(/^-/,"",s) && (""s))) {
+                        OP[j++] = i-x; x=i
+                        continue
+                    }
+                    (s == "-") && (X=1) && s=""
+                    while (o=substr(s,1,1)) {
+                        if (o ~ /^['$opt']/) {
+                            print (s == o) ? (o""++i) : (o i"#-*" o)
+                            if (i < ARGC)
+                                break
+                            print "!"o # will be the last argument.
+                        }
+                        sub(/./,"",s); print o
+                    }
+                }
+                exit (E = (j>0) ? 0 : 1)
+              }
+         END{ print "--"; for (i=0; i < j; i++) print OP[i]; exit E }' "$@"
+}
+
+growl () {
+    # Prints error message and exits if a code of non-zero is given.
+    # $f CODE, MESSAGE
+    local code=$1; shift 1
+    if [ $code -ne 0 ]; then
+        echo "(E) $*" >&2
+        exit $code
+    fi
+    echo "(A) $*" >&2
+}
+
+humansize () {
+    # Displays the sizes in a legible way.
+    # $f SIZE IN KILO-BYTES
+    POSIXLY_CORRECT=Y awk 'BEGIN{split("G M K", u); x=1048576
+                                 while (++i && x >= '$1')
+                                     x/=1024
+                                 printf("%.1f %sio\n", '$1'/x, u[i])}'
+}
+
+printinfo () {
+    # Displays the contents of text files associated to the packages requested.
+    # $f URL OF THE REPOSITORY
+    local code="" size="" file="" ok=1
+    while read -r code size file; do
+        echo "**** ${file##*/}.spack ($(humansize $size))"
+        $CURL "$1/$file.txt"
+        echo ""
+        ok=0
+    done
+    return $ok
+}
+
+requestinfo () {
+    # List the packages/the contents of the database.
+    # $f DB, LIST MODE
+    local db="$1" list="${2:+"#"}"
+    $CURL "$db" | awk $list'BEGIN{print "\n\n--end--"}
+                     '$list'{print; next}
+                            {print $2}
+                            END{exit NR ? 0:1}' || growl 1 "$db inaccessible!"
+}
+
+requestpkg () {
+    # Gathers information to evaluate the updates.
+    # $f DB, PACKAGES TO IGNORE, PACKAGES MANUALLY MANAGED
+    local db="$1"; shift 1
+    echo $1 # no quotation marks because you want everything on a single line.
+    echo $2 #  "                     "                       "
+    ls -1 "$LOGDIR" 2>/dev/null
+    echo "--end--"
+    $CURL "$db" || growl 1 "$db inaccessible!"
+}
+
+spackadd () {
+    # Simulates an upgrade with false packets. Essentially
+    # useful for the debugs, TO KEEP IN the COMMENTS.
+    # $f ROOT, PACKAGE
+    shift 1 # it mocks the option root here.
+    local pkg="$(basename "$1" | sed 's/-[^-]*-[^-]*-[^-]*$//')"
+    mkdir -p "$LOGDIR"
+    rm -f $(find "$LOGDIR/" | sed "/\/$pkg-[^-]*-[^-]*-[^-]*$/p" -n)
+    pkg=$(basename "$1" .spack)
+    echo  "  >  $pkg"
+    touch "$LOGDIR/$pkg"
+}
+
+upgrade () {
+    # Downloads and upgrades the packages.
+    # $f KEEP THE PACKAGES, CACHE, DOSS. PAD, DEMO MODE, URL, REPOSITORY, LOG
+    local save="$1" cch="$2" tmp="${3:-"/tmp"}" demo="$4" url="$5" dwl="" \
+          date=$(date +%d/%m/%Y) code="" p="" size=0 total=0 c=0; shift 5
+    if ! read -r code size dwl; then
+        echo "The system is up to date."
+        return 0
+    fi
+    tmp="$(mktemp -qd "$tmp/0g-XXXXXX")"
+    [ "$tmp" ] || growl 1 "Unable to establish a secure temporary folder !"
+    [ "$demo" ] && demo="[demo]"
+    exec 3>>"$1"
+    while [ "$code" ]; do
+        c=$((c+1)); p=$(basename "$dwl.spack")
+        echo "$demo > Downloading $p: $(humansize $size)"
+        if [ "$cch" ] && [ -f "$cch/$dwl.spack" ]; then
+            echo " In cache : using local copy of..."
+            [ "$demo" ] || ln -sf "$cch/$dwl.spack" "$tmp"
+        else
+            total=$((total+size))
+            [ "$demo" ] || $CURL --no-silent -o "$tmp/$p" "$url/$dwl.spack"
+        fi
+        if [ $code -ne 0 ]; then
+            growl 0 "$p is marked as special and will not be integrated."
+            echo "$date ! ${p%.spack}" >&3
+        elif [ ! "$demo" ]; then
+            spackadd --root="$ROOT" "$tmp/$p" && echo "$date + ${p%.spack}" >&3
+            [ "$save" = "yes" ] && [ ! -h "$tmp/$p" ] || rm -f "$tmp/$p"
+        fi  # we do not keep the   ^^^   symbolic links to the cache.
+        read -r code size dwl
+    done
+    exec 3>&-
+    if ! rmdir "$tmp" 2>/dev/null; then
+        if [ "$save" = "yes" ]; then
+            echo "$demo The downloaded packages have been stored in the $tmp"
+        else
+            growl 0 "$tmp is not empty and will not be destroyed."
+        fi
+    fi
+    echo "$demo $c package concerned -- $(humansize $total) downloaded."
+}
+
+usage () {
+    # Prints the help and exits.
+    # $f CODE
+    [ $1 -eq 0 ] || exec 1>&2
+    cat >&1 << EOF
+       0g - management and upgrade remote packages ZeroLinux
+
+  zeropkg downloads and updates the installed packages for which a
+  new version is available in the repository of ZeroLinux. When
+  additional arguments are provided, zeropkg research and then installs
+  or updates the corresponding packages with their potential
+  dependencies.
+
+  Use: zeropkg [option] [package]
+
+  Options:
+      -A <item>      ---  Add the items, separated by spaces, to the
+                          List of packages not to be updated
+                          automatically.
+      -C <folder>    ---  The path to the cache, containing a local copy
+                          Of the remote repository.
+      -E <chain> --- enable / disable expert mode, which cancels the
+                          Dependency management.
+      -G <string> --- enable / disable packet backup after
+                          Integration into the system.
+      -J <file> --- gives the file to use for logging.
+      -L <item (s)> --- add the items, separated by spaces, to the
+                          List of packages not to be downloaded.
+      -S <string> --- redefines the address of the remote repository.
+      -T <string> --- redefines the root of the secure directory where
+                          Will pass the packets.
+      -d --- switches to "demo" mode, showing what will be done,
+                          Without modifying the system.
+      -h --- prints this help on standard output and outputs.
+      -i --- prints the list of available packages, or
+                          Information about the indicated packages.
+  For more information, see "man 8 zeropkg" and the configuration file
+  "$CONFIG".
+
+EOF
+    exit $1
+}
+
+# === Programme principal ======================================================
+export LC_ALL='C'
+umask 022
+unset demo info root paquets
+MASTER=""
+ROOT="$(echo "$ROOT" | sed 's#/*$#/#')"
+LOGDIR="${ROOT}var/log/packages"
+CURL="/usr/bin/curl-statique -#LRs" # Curl is compiled statically
+
+for i in $(getopt ACEGJLST "$@"); do
+    case "$root$i" in
+        A*) eval Attention=\${${i#A}}" $Attention";;
+        C*) eval Cache=\${${i#C}};;
+        E*) eval Expert=\${${i#E}};;
+        G*) eval Sauvegarde=\${${i#G}};;
+        J*) eval Journal=\${${i#J}};;
+        L*) eval Local=\${${i#L}}" $Local";;
+        S*) eval Source=\${${i#S}};;
+        T*) eval Tampon=\${${i#T}};;
+        d) demo=Y;;
+        h) usage 0;;
+        i) info=Y;;
+        ?) growl 1 "$i: Unknown option.";;
+        !?*) growl 1 "${i#!}: Requires an argument.";;
+        --) root='/';;
+        *) shift $i; paquets="$paquets $1"
+    esac
+done
+
+root="$VERSION/$(uname -m)" # VERSION comes from /etc/os-release.
+[ -f "$Journal" ] || Journal="/dev/null"
+[ -z "$Cache" ] || Cache="$Cache/$root"
+[ "$Source" ] || Source="$MASTER"
+Source="$Source/$root"
+db="$Source/paquets.db"
+
+if [ "$info" ]; then
+    if [ "$paquets" ]; then
+        requestinfo "$db" | evalpkg "oui" $paquets | printinfo "$Source"
+    else
+        requestinfo "$db" -LISTE 
+    fi
+    exit $?
+fi
+
+requestpkg "$db" "$Local" "$Attention" \
+    | evalpkg "$Expert" $paquets \
+    | upgrade "$Sauvegarde" "$Cache" "$Tampon" "$demo" "$Source" "$Journal"
+
+# FdF
