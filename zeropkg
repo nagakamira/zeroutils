@@ -24,7 +24,7 @@ if [ -f "$CONFIG" ]; then
 fi
 
 unset Attention Cache Expert Journal Local Sauvegarde Source Tampon
-CONFIG="/etc/0outils/0g.conf"
+CONFIG="/etc/zeropkg/zeropkg.conf"
 if [ -f "$CONFIG" ]; then
     . "$CONFIG"
 fi
@@ -207,7 +207,7 @@ usage () {
     # $f CODE
     [ $1 -eq 0 ] || exec 1>&2
     cat >&1 << EOF
-       0g - management and upgrade remote packages ZeroLinux
+       zeropkg - management and upgrade remote packages ZeroLinux
 
   zeropkg downloads and updates the installed packages for which a
   new version is available in the repository of ZeroLinux. When
