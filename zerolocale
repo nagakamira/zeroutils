@@ -30,32 +30,26 @@ else
         case "$CHOIXLOCALE" in
         "1")
             LOCALECHOISIE="de_DE.UTF-8"
-            KITTYLOCALE="de"
             break
         ;;
         "2")
             LOCALECHOISIE="en_US.UTF-8"
-            KITTYLOCALE="en"
             break
         ;;
         "3")
             LOCALECHOISIE="es_ES.UTF-8"
-            KITTYLOCALE="es"
             break
         ;;
         "4")
             LOCALECHOISIE="fr_FR.UTF-8"
-            KITTYLOCALE="fr"
             break
         ;;
         "5")
             LOCALECHOISIE="pt_PT.UTF-8"
-            KITTYLOCALE="pt"
             break
         ;;
         "6")
             LOCALECHOISIE="ru_RU.UTF-8"
-            KITTYLOCALE="ru"
             break
         ;;
         *)
@@ -88,6 +82,5 @@ fi
 # Apply changes :
 export LANG="${LOCALECHOISIE}"
 export LC_ALL="${LOCALECHOISIE}"
-echo language="${KITTYLOCALE}" > /etc/mudur.conf
 
 # Got it!
