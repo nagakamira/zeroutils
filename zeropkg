@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# 0G - gestionnaire distant pour 0linux.
+# zeropkg - package manager for ZeroLinux
 
 # Copyright (c) 2012-2015 Sébastien Boillod <sbb at tuxfamily dot org>.
 # Copyright (c) 2017 Egor Mikhailov <nagakamira at mail dot ru>.
