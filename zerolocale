@@ -8,70 +8,75 @@ LOCALECONFIGFILE=/etc/locale.conf
 
 # The argument includes automated processing :
 if [ -n "${1}" ]; then
-	LOCALECHOISIE="${1}"
+    LOCALECHOISIE="${1}"
 else
-	while [ 0 ]; do
-		if [ "${INSTALLDEBUG}" = "" ]; then
-			clear
-		fi
-		echo -e "\033[1;32mLocale configuration.\033[0;0m"
-		echo "Select your locale"
-		echo "from the list below:"
-		echo ""
-		echo "1) : de_DE.UTF-8 - German"
-		echo "2) : en_US.UTF-8 - English"
-		echo "3) : es_ES.UTF-8 - Spanish"
-		echo "4) : fr_FR.UTF-8 - French"
-		echo "5) : pt_PT.UTF-8 - Portugese"
-		echo "6) : ru_RU.UTF-8 - Russian"
-		echo ""
-		echo -n "Your selection: "
-		read CHOIXLOCALE;
-		case "$CHOIXLOCALE" in
-		"1")
-			LOCALECHOISIE="de_DE.UTF-8"
-			break
-		"2")
-			LOCALECHOISIE="en_US.UTF-8"
-			break
-		"3")
-			LOCALECHOISIE="es_ES.UTF-8"
-			break
-		"4")
-			LOCALECHOISIE="fr_FR.UTF-8"
-			break
-		"5")
-			LOCALECHOISIE="pt_PT.UTF-8"
-			break
-		"6")
-			LOCALECHOISIE="ru_RU.UTF-8"
-			break
-		;;
-		*)
-			echo "Please enter a valid number (between 1 and 2)."
-			sleep 2
-			continue
-		esac
-	done
+    while [ 0 ]; do
+        if [ "${INSTALLDEBUG}" = "" ]; then
+            clear
+        fi
+        echo -e "\033[1;32mLocale configuration.\033[0;0m"
+        echo "Select your locale"
+        echo "from the list below:"
+        echo ""
+        echo "1 : de_DE.UTF-8 - German"
+        echo "2 : en_US.UTF-8 - English"
+        echo "3 : es_ES.UTF-8 - Spanish"
+        echo "4 : fr_FR.UTF-8 - French"
+        echo "5 : pt_PT.UTF-8 - Portugese"
+        echo "6 : ru_RU.UTF-8 - Russian"
+        echo ""
+        echo -n "Your selection: "
+        read CHOIXLOCALE;
+        case "$CHOIXLOCALE" in
+        "1")
+            LOCALECHOISIE="de_DE.UTF-8"
+            break
+        ;;
+        "2")
+            LOCALECHOISIE="en_US.UTF-8"
+            break
+        ;;
+        "3")
+            LOCALECHOISIE="es_ES.UTF-8"
+            break
+        ;;
+        "4")
+            LOCALECHOISIE="fr_FR.UTF-8"
+            break
+        ;;
+        "5")
+            LOCALECHOISIE="pt_PT.UTF-8"
+            break
+        ;;
+        "6")
+            LOCALECHOISIE="ru_RU.UTF-8"
+            break
+        ;;
+        *)
+            echo "Please enter a valid number (between 1 and 2)."
+            sleep 2
+            continue
+        esac
+    done
 fi
 
 # Create locale config file :
 if [ ! -r /etc/locale.conf ]; then
-	cat > /etc/locale.conf << "EOF"
+    cat > /etc/locale.conf << "EOF"
 
 EOF
 fi
 
 # Modify locale config file :
 if [ ! "$(grep -E '^LANG=' ${LOCALECONFIGFILE})" = "" ]; then
-	sed -i -e "s/^LANG=.*$/LANG=\"${LOCALECHOISIE}\"/" ${LOCALECONFIGFILE}
+    sed -i -e "s/^LANG=.*$/LANG=\"${LOCALECHOISIE}\"/" ${LOCALECONFIGFILE}
 else
-	echo "LANG=\"${LOCALECHOISIE}\"" >> ${LOCALECONFIGFILE}
+    echo "LANG=\"${LOCALECHOISIE}\"" >> ${LOCALECONFIGFILE}
 fi
 if [ ! "$(grep -E '^LC_ALL=' ${LOCALECONFIGFILE})" = "" ]; then
-	sed -i -e "s/^LC_ALL=.*$/LC_ALL=\"${LOCALECHOISIE}\"/" ${LOCALECONFIGFILE}
+    sed -i -e "s/^LC_ALL=.*$/LC_ALL=\"${LOCALECHOISIE}\"/" ${LOCALECONFIGFILE}
 else
-	echo "LC_ALL=\"${LOCALECHOISIE}\"" >> ${LOCALECONFIGFILE}
+    echo "LC_ALL=\"${LOCALECHOISIE}\"" >> ${LOCALECONFIGFILE}
 fi
 
 # Apply changes :
