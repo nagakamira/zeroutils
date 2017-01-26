@@ -1,82 +1,81 @@
 #!/usr/bin/env bash
 
-unset CHOOSELOCALE LOCALE
-CONFIGFILE=/etc/locale.conf
+# Need :
+unset CHOIXLOCALE LOCALECHOISIE
 
-  echo ""
-  echo "Configure your locale"
-  echo "Choose:"
-  echo ""
-  echo "1: English"
-  echo "2: French"
-  echo "3: Hungarian"
-  echo "4: Italian"
-  echo "5: Portugese"
-  echo "6: Russian"
-  echo "7: Spanish"
-  echo ""
-"1")
-		CHOOSELOCALE="en_US.UTF-8"
-    LOCALE=en_US
-		break
-;;
-"2")
-		CHOOSELOCALE="fr_FR.UTF-8"
-    LOCALE=fr_FR
-		break
-;;
-"3")
-		CHOOSELOCALE="hu_HU.UTF-8"
-    LOCALE=hu_HU
-		break
-;;
-"4")
-		CHOOSELOCALE="it_IT.UTF-8"
-    LOCALE=it_IT
-		break
-;;
-"5")
-		CHOOSELOCALE="pt_PT.UTF-8"
-    LOCALE=pt_PT
-		break
-;;
-"6")
-		CHOOSELOCALE="ru_RU.UTF-8"
-    LOCALE=ru_RU
-		break
-;;
-"7")
-		CHOOSELOCALE="es_ES.UTF-8"
-    LOCALE=es_ES
-		break
-;;
+# Localization file :
+LOCALECONFIGFILE=/etc/locale.conf
+
+# The argument includes automated processing :
+if [ -n "${1}" ]; then
+	LOCALECHOISIE="${1}"
+else
+	while [ 0 ]; do
+		if [ "${INSTALLDEBUG}" = "" ]; then
+			clear
+		fi
+		echo -e "\033[1;32mLocale configuration.\033[0;0m"
+		echo "Select your locale"
+		echo "from the list below:"
+		echo ""
+		echo "1 : de_DE.UTF-8 - German"
+		echo "2 : en_US.UTF-8 - English"
+		echo "3 : es_ES.UTF-8 - Spanish"
+		echo "4 : fr_FR.UTF-8 - French"
+		echo "5 : pt_PT.UTF-8 - Portugese"
+		echo "6 : ru_RU.UTF-8 - Russian"
+		echo ""
+		echo -n "Your selection: "
+		read CHOIXLOCALE;
+		case "$CHOIXLOCALE" in
+		"1")
+			LOCALECHOISIE="de_DE.UTF-8"
+			break
+		"2")
+			LOCALECHOISIE="en_US.UTF-8"
+			break
+		"3")
+			LOCALECHOISIE="es_ES.UTF-8"
+			break
+		"4")
+			LOCALECHOISIE="fr_FR.UTF-8"
+			break
+		"5")
+			LOCALECHOISIE="pt_PT.UTF-8"
+			break
+		"6")
+			LOCALECHOISIE="ru_RU.UTF-8"
+			break
+		;;
 		*)
-			echo "Enter answer:"
+			echo "Please enter a valid number (between 1 and 2)."
 			sleep 2
 			continue
 		esac
 	done
 fi
-echo ""
-echo "Compiling "${CHOOSELOCALE}""
-echo ""
-localedef -i "${LOCALE}" -f "${CHOOSELOCALE}"
-fi
+
+# Create locale config file :
 if [ ! -r /etc/locale.conf ]; then
 	cat > /etc/locale.conf << "EOF"
 
 EOF
 fi
-if [ ! "$(grep -E '^LANG=' ${CONFIGFILE})" = "" ]; then
-	sed -i -e "s/^LANG=.*$/LANG=\"${CHOOSELOCALE}\"/" ${CONFIGFILE}
+
+# Modify locale config file :
+if [ ! "$(grep -E '^LANG=' ${LOCALECONFIGFILE})" = "" ]; then
+	sed -i -e "s/^LANG=.*$/LANG=\"${LOCALECHOISIE}\"/" ${LOCALECONFIGFILE}
 else
-	echo "LANG=\"${CHOOSELOCALE}\"" >> ${CONFIGFILE}
+	echo "LANG=\"${LOCALECHOISIE}\"" >> ${LOCALECONFIGFILE}
 fi
-if [ ! "$(grep -E '^LC_ALL=' ${CHOOSELOCALE}" = "" ]; then
-	sed -i -e "s/^LC_ALL=.*$/LC_ALL=\"${CHOOSELOCALE}\"/" ${CONFIGFILE}
+if [ ! "$(grep -E '^LC_ALL=' ${LOCALECONFIGFILE})" = "" ]; then
+	sed -i -e "s/^LC_ALL=.*$/LC_ALL=\"${LOCALECHOISIE}\"/" ${LOCALECONFIGFILE}
 else
-	echo "LC_ALL=\"${CHOOSELOCALE}\"" >> ${CONFIGFILE}
+	echo "LC_ALL=\"${LOCALECHOISIE}\"" >> ${LOCALECONFIGFILE}
 fi
-export LANG="${CHOOSELOCALE}"
-export LC_ALL="${CHOOSELOCALE}"
-fi
+
+# Apply changes :
+export LANG="${LOCALECHOISIE}"
+export LC_ALL="${LOCALECHOISIE}"
+
+# Got it!
